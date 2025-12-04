@@ -1,0 +1,14 @@
+*
+
+!/.gitignore
+
+!/src
+!/styles
+!/build.ts
+!/bun-env.ts
+!/bun-env.d.ts
+!/bun.lock
+!/bunfig.toml
+!/components.json
+!/package.json
+!/tsconfig.json

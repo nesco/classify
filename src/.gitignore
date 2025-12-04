@@ -1,0 +1,11 @@
+!/.gitignore
+!/components
+!/components/ui
+!/components/ui/**
+!/lib
+!/lib/utils.ts
+!/App.tsx
+!/frontend.tsx
+!/index.css
+!/index.html
+!/index.tsx
