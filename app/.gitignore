@@ -1,0 +1,6 @@
+!/.gitignore
+!/api
+!/project
+!/globals.css
+!/layout.tsx
+!/page.tsx

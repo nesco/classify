@@ -1,14 +1,28 @@
 *
 
+# Core config files
 !/.gitignore
+!/.env.local.example
+!/.eslintrc.json
+!/.prettierrc
 
-!/src
-!/styles
-!/build.ts
-!/bun-env.ts
+# Source directories
+!/app
+!/components
+!/data
+!/lib
+
+# Config files
 !/bun-env.d.ts
 !/bun.lock
 !/bunfig.toml
 !/components.json
+!/next-env.d.ts
+!/next.config.js
 !/package.json
+!/tailwind.config.ts
 !/tsconfig.json
+
+
+
+
