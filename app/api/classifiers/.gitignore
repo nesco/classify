@@ -1,0 +1,8 @@
+!/.gitignore
+
+!/\[id\]
+!/\[id\]/route.ts
+!/\[id\]/categories
+!/\[id\]/categories/route.ts
+
+!/route.ts

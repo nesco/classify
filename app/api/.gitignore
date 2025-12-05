@@ -3,4 +3,6 @@
 !/classify/route.ts
 !/feedback
 !/feedback/route.ts
-!/projects
+!/classifiers
+!/suggest-category
+!/suggest-category/route.ts

@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Plus,
   ChevronLeft,
@@ -47,20 +48,16 @@ export function ClassifierDetail({ initialClassifier }: ClassifierDetailProps) {
   const [isPending, startTransition] = useTransition();
   const [classifyText, setClassifyText] = useState("");
   const [isClassifying, setIsClassifying] = useState(false);
-
-  // Category dialog state
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [categoryName, setCategoryName] = useState("");
   const [categoryDescription, setCategoryDescription] = useState("");
   const [categoryExamples, setCategoryExamples] = useState<string[]>([]);
   const [newExample, setNewExample] = useState("");
-
-  // Delete confirmation
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-
-  // Expanded records for viewing full text/explanation
   const [expandedRecords, setExpandedRecords] = useState<Set<string>>(new Set());
+  const [selectedRecords, setSelectedRecords] = useState<Set<string>>(new Set());
+  const [isSuggestingCategory, setIsSuggestingCategory] = useState(false);
 
   async function refreshClassifier() {
     const res = await fetch(`/api/classifiers/${classifier.id}`);
@@ -101,7 +98,7 @@ export function ClassifierDetail({ initialClassifier }: ClassifierDetailProps) {
     }
   }
 
-  function openCategoryDialog(category?: Category) {
+  function openCategoryDialog(category?: Category, initialExamples?: string[]) {
     if (category) {
       setEditingCategory(category);
       setCategoryName(category.name);
@@ -111,11 +108,60 @@ export function ClassifierDetail({ initialClassifier }: ClassifierDetailProps) {
       setEditingCategory(null);
       setCategoryName("");
       setCategoryDescription("");
-      setCategoryExamples([]);
+      setCategoryExamples(initialExamples ?? []);
     }
     setNewExample("");
     setIsCategoryDialogOpen(true);
   }
+
+  function toggleRecordSelection(recordId: string) {
+    const newSelected = new Set(selectedRecords);
+    if (newSelected.has(recordId)) {
+      newSelected.delete(recordId);
+    } else {
+      newSelected.add(recordId);
+    }
+    setSelectedRecords(newSelected);
+  }
+
+  async function createCategoryFromSelected() {
+    const selectedTexts = classifier.history
+      .filter((r) => selectedRecords.has(r.id))
+      .map((r) => r.text);
+
+    setIsSuggestingCategory(true);
+    setSelectedRecords(new Set());
+
+    try {
+      const res = await fetch("/api/suggest-category", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          examples: selectedTexts,
+          existingCategories: classifier.categories,
+        }),
+      });
+
+      if (res.ok) {
+        const suggestion = await res.json();
+        setEditingCategory(null);
+        setCategoryName(suggestion.name);
+        setCategoryDescription(suggestion.description);
+        setCategoryExamples(selectedTexts);
+        setNewExample("");
+        setIsCategoryDialogOpen(true);
+      } else {
+        openCategoryDialog(undefined, selectedTexts);
+        toast.error("Could not generate suggestion, please fill manually");
+      }
+    } catch {
+      openCategoryDialog(undefined, selectedTexts);
+      toast.error("Could not generate suggestion, please fill manually");
+    } finally {
+      setIsSuggestingCategory(false);
+    }
+  }
+
 
   function addExample() {
     if (newExample.trim()) {
@@ -316,7 +362,7 @@ export function ClassifierDetail({ initialClassifier }: ClassifierDetailProps) {
           </div>
 
           {/* History */}
-          <div className="flex-1 overflow-hidden">
+          <div className="relative flex-1 overflow-hidden">
             <div className="border-b bg-muted/30 px-6 py-3">
               <h3 className="font-semibold">Classification History</h3>
             </div>
@@ -335,88 +381,93 @@ export function ClassifierDetail({ initialClassifier }: ClassifierDetailProps) {
                       const isExpanded = expandedRecords.has(record.id);
                       const truncatedText =
                         record.text.length > 100 ? record.text.slice(0, 100) + "..." : record.text;
+                      const isSelectable = record.categoryId === null && !record.feedback;
+                      const isSelected = selectedRecords.has(record.id);
 
                       return (
-                        <Card key={record.id} className="p-4">
-                          <div
-                            className="cursor-pointer"
-                            onClick={() => toggleExpanded(record.id)}
-                          >
-                            <div className="mb-2 flex items-start justify-between gap-2">
-                              <p className="flex-1 text-sm">
-                                {isExpanded ? record.text : truncatedText}
-                              </p>
-                              {record.text.length > 100 && (
-                                <Button variant="ghost" size="sm" className="h-6 px-2">
-                                  {isExpanded ? (
-                                    <ChevronDown className="h-4 w-4" />
-                                  ) : (
-                                    <ChevronRight className="h-4 w-4" />
-                                  )}
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="mb-2 flex items-center gap-2">
-                            {category && (
-                              <Badge
-                                style={{ backgroundColor: category.color }}
-                                className="text-white"
+                        <Card
+                          key={record.id}
+                          className={`overflow-hidden ${isSelected ? "ring-2 ring-primary" : ""}`}
+                        >
+                          <div className="flex">
+                            {isSelectable && (
+                              <div
+                                className="flex w-10 shrink-0 cursor-pointer items-center justify-center border-r hover:bg-muted/50"
+                                onClick={() => toggleRecordSelection(record.id)}
                               >
-                                {category.name}
-                              </Badge>
+                                <Checkbox
+                                  checked={isSelected}
+                                  onCheckedChange={() => toggleRecordSelection(record.id)}
+                                />
+                              </div>
                             )}
-                            <Badge variant={getConfidenceBadgeVariant(record.confidence)}>
-                              {record.confidence}
-                            </Badge>
-                          </div>
-
-                          {isExpanded && record.explanation && (
-                            <p className="mb-3 text-xs text-muted-foreground">
-                              {record.explanation}
-                            </p>
-                          )}
-
-                          {record.feedback === "correct" ? (
-                            <div className="flex items-center gap-1 text-xs text-green-600">
-                              <Check className="h-3 w-3" />
-                              Confirmed
-                            </div>
-                          ) : record.feedback === "incorrect" ? (
-                            <div className="text-xs text-orange-600">
-                              Corrected to {getCategoryById(record.correctedCategoryId || "")?.name}
-                            </div>
-                          ) : (
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-7 text-xs"
-                                onClick={() => handleFeedback(record.id, true)}
-                                disabled={isPending}
+                            <div className="flex-1 p-4">
+                              <div
+                                className="cursor-pointer"
+                                onClick={() => toggleExpanded(record.id)}
                               >
-                                <Check className="mr-1 h-3 w-3" />
-                                Correct
-                              </Button>
-                              <Popover>
-                                <PopoverTrigger asChild>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="h-7 text-xs"
-                                    disabled={isPending}
+                                <div className="mb-2 flex items-start justify-between gap-2">
+                                  <p className="flex-1 text-sm">
+                                    {isExpanded ? record.text : truncatedText}
+                                  </p>
+                                  {record.text.length > 100 && (
+                                    <Button variant="ghost" size="sm" className="h-6 px-2">
+                                      {isExpanded ? (
+                                        <ChevronDown className="h-4 w-4" />
+                                      ) : (
+                                        <ChevronRight className="h-4 w-4" />
+                                      )}
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="mb-2 flex items-center gap-2">
+                                {category && (
+                                  <Badge
+                                    style={{ backgroundColor: category.color }}
+                                    className="text-white"
                                   >
-                                    <X className="mr-1 h-3 w-3" />
-                                    Incorrect
-                                  </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-48 p-2">
-                                  <p className="mb-2 text-xs font-medium">Select correct category:</p>
-                                  <div className="space-y-1">
-                                    {classifier.categories
-                                      .filter((c) => c.id !== record.categoryId)
-                                      .map((c) => (
+                                    {category.name}
+                                  </Badge>
+                                )}
+                                <Badge variant={getConfidenceBadgeVariant(record.confidence)}>
+                                  {record.confidence}
+                                </Badge>
+                              </div>
+
+                              {isExpanded && record.explanation && (
+                                <p className="mb-3 text-xs text-muted-foreground">
+                                  {record.explanation}
+                                </p>
+                              )}
+
+                              {record.feedback === "correct" ? (
+                                <div className="flex items-center gap-1 text-xs text-green-600">
+                                  <Check className="h-3 w-3" />
+                                  Confirmed
+                                </div>
+                              ) : record.feedback === "incorrect" ? (
+                                <div className="text-xs text-orange-600">
+                                  Assigned to {getCategoryById(record.correctedCategoryId || "")?.name}
+                                </div>
+                              ) : record.categoryId === null ? (
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-7 text-xs"
+                                      disabled={isPending}
+                                    >
+                                      <Plus className="mr-1 h-3 w-3" />
+                                      Assign to category
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-48 p-2">
+                                    <p className="mb-2 text-xs font-medium">Select category:</p>
+                                    <div className="space-y-1">
+                                      {classifier.categories.map((c) => (
                                         <button
                                           key={c.id}
                                           className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent"
@@ -429,17 +480,94 @@ export function ClassifierDetail({ initialClassifier }: ClassifierDetailProps) {
                                           {c.name}
                                         </button>
                                       ))}
-                                  </div>
-                                </PopoverContent>
-                              </Popover>
+                                    </div>
+                                  </PopoverContent>
+                                </Popover>
+                              ) : (
+                                <div className="flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-7 text-xs"
+                                    onClick={() => handleFeedback(record.id, true)}
+                                    disabled={isPending}
+                                  >
+                                    <Check className="mr-1 h-3 w-3" />
+                                    Correct
+                                  </Button>
+                                  <Popover>
+                                    <PopoverTrigger asChild>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-7 text-xs"
+                                        disabled={isPending}
+                                      >
+                                        <X className="mr-1 h-3 w-3" />
+                                        Incorrect
+                                      </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-48 p-2">
+                                      <p className="mb-2 text-xs font-medium">Select correct category:</p>
+                                      <div className="space-y-1">
+                                        {classifier.categories
+                                          .filter((c) => c.id !== record.categoryId)
+                                          .map((c) => (
+                                            <button
+                                              key={c.id}
+                                              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent"
+                                              onClick={() => handleFeedback(record.id, false, c.id)}
+                                            >
+                                              <div
+                                                className="h-2 w-2 rounded-full"
+                                                style={{ backgroundColor: c.color }}
+                                              />
+                                              {c.name}
+                                            </button>
+                                          ))}
+                                      </div>
+                                    </PopoverContent>
+                                  </Popover>
+                                </div>
+                              )}
                             </div>
-                          )}
+                          </div>
                         </Card>
                       );
                     })
                 )}
               </div>
             </ScrollArea>
+
+            {(selectedRecords.size >= 2 || isSuggestingCategory) && (
+              <div className="absolute inset-x-0 bottom-4 flex justify-center">
+                <div className="flex items-center gap-3 rounded-lg border bg-background px-4 py-2 shadow-lg">
+                  {isSuggestingCategory ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span className="text-sm">Generating suggestion...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-sm text-muted-foreground">
+                        {selectedRecords.size} selected
+                      </span>
+                      <Button size="sm" onClick={createCategoryFromSelected}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Create category
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setSelectedRecords(new Set())}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

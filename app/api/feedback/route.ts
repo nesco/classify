@@ -25,19 +25,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Record not found" }, { status: 404 });
     }
 
-    // Update feedback
     record.feedback = feedback;
 
-    // If incorrect, add to correct category examples for learning
-    if (feedback === "incorrect" && correctedCategoryId) {
+    if (feedback === "correct") {
+      const category = classifier.categories.find((c) => c.id === record.categoryId);
+      if (category && !category.examples.includes(record.text)) {
+        category.examples.push(record.text);
+      }
+    } else if (feedback === "incorrect" && correctedCategoryId) {
       record.correctedCategoryId = correctedCategoryId;
-
       const correctCategory = classifier.categories.find((c) => c.id === correctedCategoryId);
-      if (correctCategory) {
-        // Add text to examples if not already present
-        if (!correctCategory.examples.includes(record.text)) {
-          correctCategory.examples.push(record.text);
-        }
+      if (correctCategory && !correctCategory.examples.includes(record.text)) {
+        correctCategory.examples.push(record.text);
       }
     }
 

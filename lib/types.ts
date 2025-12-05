@@ -43,3 +43,8 @@ export interface FeedbackRequest {
   feedback: "correct" | "incorrect";
   correctedCategoryId?: string;
 }
+
+export interface CategorySuggestion {
+  name: string;
+  description: string;
+}
