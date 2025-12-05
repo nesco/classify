@@ -539,7 +539,7 @@ export function ClassifierDetail({ initialClassifier }: ClassifierDetailProps) {
               </div>
             </ScrollArea>
 
-            {(selectedRecords.size >= 2 || isSuggestingCategory) && (
+            {(selectedRecords.size >= 1 || isSuggestingCategory) && (
               <div className="absolute inset-x-0 bottom-4 flex justify-center">
                 <div className="flex items-center gap-3 rounded-lg border bg-background px-4 py-2 shadow-lg">
                   {isSuggestingCategory ? (

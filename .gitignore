@@ -11,6 +11,7 @@
 !/components
 !/data
 !/lib
+!/baml_src
 
 # Config files
 !/bun-env.d.ts

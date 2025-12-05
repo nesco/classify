@@ -1,0 +1,8 @@
+// Anthropic Claude client for classification
+client<llm> Claude {
+  provider anthropic
+  options {
+    model "claude-sonnet-4-20250514"
+    api_key env.ANTHROPIC_API_KEY
+  }
+}
