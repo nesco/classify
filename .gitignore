@@ -24,6 +24,9 @@
 !/postcss.config.mjs
 !/tsconfig.json
 
+# MISC
+!/README.md
+
 
 
 
