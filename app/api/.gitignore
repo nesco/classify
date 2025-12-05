@@ -1,0 +1,6 @@
+!/.gitignore
+!/classify
+!/classify/route.ts
+!/feedback
+!/feedback/route.ts
+!/projects

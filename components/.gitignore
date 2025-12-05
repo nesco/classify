@@ -1,3 +1,7 @@
 !/.gitignore
 !/ui 
 !/ui/**
+
+!/classifier-list.tsx
+!/classifier-detail.tsx
+!/providers.tsx

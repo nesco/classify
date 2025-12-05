@@ -3,7 +3,7 @@
 # Core config files
 !/.gitignore
 !/.env.local.example
-!/.eslintrc.json
+!/eslint.config.mjs
 !/.prettierrc
 
 # Source directories
@@ -20,7 +20,7 @@
 !/next-env.d.ts
 !/next.config.js
 !/package.json
-!/tailwind.config.ts
+!/postcss.config.mjs
 !/tsconfig.json
 
 

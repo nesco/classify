@@ -1,6 +1,6 @@
 !/.gitignore
 !/api
-!/project
+!/classifier
 !/globals.css
 !/layout.tsx
 !/page.tsx
